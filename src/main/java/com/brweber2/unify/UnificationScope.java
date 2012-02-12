@@ -41,6 +41,7 @@ public class UnificationScope {
                 values.put( uuid, value );
                 val = value;
             }
+            return true;
         }
         return value.equals( val );
     }
