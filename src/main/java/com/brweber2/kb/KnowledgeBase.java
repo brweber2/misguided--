@@ -21,6 +21,7 @@ public class KnowledgeBase {
     
     public void add( KnowledgeBaseEntry entry )
     {
+        // todo only add to entry if functor is null? or is mapped entries simple a shortcut??? this will effect remove as well...
         entries.add( entry );
         String functor = getFunctor( entry );
         if ( functor != null )
@@ -51,6 +52,10 @@ public class KnowledgeBase {
     }
     
     public List<KnowledgeBaseEntry> getEntriesByFunctor( String functor ) {
+        if ( functor == null )
+        {
+            return entries;
+        }
         return mappedEntries.get( functor );
     }
     

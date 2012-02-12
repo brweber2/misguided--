@@ -33,53 +33,63 @@ public class ProofSearch {
     public Unify getUnifier() {
         return unifier;
     }
-
-    public QuestionResult ask( Term question )
-    {
-        return ask( new QuestionResult(), new UnificationScope(), question );
-    }
     
     private QuestionResult satisfies( RuleBody ruleToSatisfy, UnificationScope scope )
     {
-        return satisfies( new QuestionResult(), ruleToSatisfy, scope );
+        QuestionResult result = new QuestionResult();
+        satisfies( result, ruleToSatisfy, scope );
+        return result;
     }
 
-    private QuestionResult satisfies( QuestionResult result, RuleBody ruleToSatisfy, UnificationScope scope )
+    private void satisfies( QuestionResult result, RuleBody ruleToSatisfy, UnificationScope scope )
     {
         if ( ruleToSatisfy instanceof Term )
         {
-            return ask( result, scope, (Term) ruleToSatisfy );
+            ask( result, scope, (Term) ruleToSatisfy );
         }
         else if ( ruleToSatisfy instanceof RuleAnd )
         {
             RuleAnd ruleAnd = (RuleAnd) ruleToSatisfy;
-            QuestionResult leftResult = satisfies(result, ruleAnd.getLeft(), scope);
-            if ( leftResult.successful() )
+            satisfies(result, ruleAnd.getLeft(), scope);
+            if ( result.successful() )
             {
-                return satisfies(result, ruleAnd.getRight(), scope);
+                satisfies(result, ruleAnd.getRight(), scope);
             }
             else
             {
-                return leftResult;
+                return;
             }
         }
         else if ( ruleToSatisfy instanceof RuleOr )
         {
             RuleOr ruleOr = (RuleOr) ruleToSatisfy;
-            QuestionResult leftResult = satisfies(new QuestionResult(), ruleOr.getLeft(), new UnificationScope(scope));
+            // we need a temporary result in case we need to throw this out...
+            QuestionResult leftResult = new QuestionResult();
+            UnificationScope leftScope = new UnificationScope(scope);
+            satisfies(leftResult, ruleOr.getLeft(), leftScope);
             if ( leftResult.successful() )
             {
-                return leftResult;
+                for (UnificationResult unificationResult : leftResult.getResults()) {
+                    result.addIfUnifies(unificationResult);
+                }
+                return;
             }
             else
             {
-                return satisfies(result, ruleOr.getRight(), scope );
+                satisfies(result, ruleOr.getRight(), scope );
             }
         }
         throw new RuntimeException("Unknown rule to satisfy type " + ruleToSatisfy);
     }
 
-    public QuestionResult ask( QuestionResult result, UnificationScope scope, Term question )
+    public QuestionResult ask( Term question )
+    {
+        QuestionResult result = new QuestionResult();
+        ask( result, new UnificationScope(), question );
+        return result;
+    }
+
+    public void ask( QuestionResult result, UnificationScope scope, Term question )
     {
         List<KnowledgeBaseEntry> knowledgeBaseEntries = knowledgeBase.getEntriesByFunctor(question.getFunctor());
         for (KnowledgeBaseEntry knowledgeBaseEntry : knowledgeBaseEntries) {
@@ -107,6 +117,5 @@ public class ProofSearch {
                 }
             }
         }
-        return result;
     }
 }
