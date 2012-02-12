@@ -33,54 +33,6 @@ public class ProofSearch {
     public Unify getUnifier() {
         return unifier;
     }
-    
-    private QuestionResult satisfies( RuleBody ruleToSatisfy, UnificationScope scope )
-    {
-        QuestionResult result = new QuestionResult();
-        satisfies( result, ruleToSatisfy, scope );
-        return result;
-    }
-
-    private void satisfies( QuestionResult result, RuleBody ruleToSatisfy, UnificationScope scope )
-    {
-        if ( ruleToSatisfy instanceof Term )
-        {
-            ask( result, scope, (Term) ruleToSatisfy );
-        }
-        else if ( ruleToSatisfy instanceof RuleAnd )
-        {
-            RuleAnd ruleAnd = (RuleAnd) ruleToSatisfy;
-            satisfies(result, ruleAnd.getLeft(), scope);
-            if ( result.successful() )
-            {
-                satisfies(result, ruleAnd.getRight(), scope);
-            }
-            else
-            {
-                return;
-            }
-        }
-        else if ( ruleToSatisfy instanceof RuleOr )
-        {
-            RuleOr ruleOr = (RuleOr) ruleToSatisfy;
-            // we need a temporary result in case we need to throw this out...
-            QuestionResult leftResult = new QuestionResult();
-            UnificationScope leftScope = new UnificationScope(scope);
-            satisfies(leftResult, ruleOr.getLeft(), leftScope);
-            if ( leftResult.successful() )
-            {
-                for (UnificationResult unificationResult : leftResult.getResults()) {
-                    result.addIfUnifies(unificationResult);
-                }
-                return;
-            }
-            else
-            {
-                satisfies(result, ruleOr.getRight(), scope );
-            }
-        }
-        throw new RuntimeException("Unknown rule to satisfy type " + ruleToSatisfy);
-    }
 
     public QuestionResult ask( Term question )
     {
@@ -116,6 +68,63 @@ public class ProofSearch {
                     }
                 }
             }
+        }
+    }
+
+    private QuestionResult satisfies( RuleBody ruleToSatisfy, UnificationScope scope )
+    {
+        QuestionResult result = new QuestionResult();
+        satisfies( result, ruleToSatisfy, scope );
+        return result;
+    }
+
+    private void satisfies( QuestionResult result, RuleBody ruleToSatisfy, UnificationScope scope )
+    {
+        if ( ruleToSatisfy instanceof Term )
+        {
+            ask( result, scope, (Term) ruleToSatisfy );
+        }
+        else if ( ruleToSatisfy instanceof RuleAnd )
+        {
+            RuleAnd ruleAnd = (RuleAnd) ruleToSatisfy;
+            QuestionResult leftResult = new QuestionResult();
+            satisfies(leftResult, ruleAnd.getLeft(), scope);
+            if ( leftResult.successful() )
+            {
+                RuleBody rightBody = ruleAnd.getRight();
+                for (UnificationResult unificationResult : leftResult.getResults()) {
+                    QuestionResult rightResult = new QuestionResult();
+                    satisfies(rightResult, rightBody, new UnificationScope(unificationResult.getScope()) );
+                    if ( rightResult.successful() )
+                    {
+                        for (UnificationResult unificationResult1 : rightResult.getResults()) {
+                            result.addIfUnifies( unificationResult1 );
+                        }
+                    }
+                }
+            }
+        }
+        else if ( ruleToSatisfy instanceof RuleOr )
+        {
+            RuleOr ruleOr = (RuleOr) ruleToSatisfy;
+            // we need a temporary result in case we need to throw this out...
+            QuestionResult leftResult = new QuestionResult();
+            UnificationScope leftScope = new UnificationScope(scope);
+            satisfies(leftResult, ruleOr.getLeft(), leftScope);
+            if ( leftResult.successful() )
+            {
+                for (UnificationResult unificationResult : leftResult.getResults()) {
+                    result.addIfUnifies(unificationResult);
+                }
+            }
+            else
+            {
+                satisfies(result, ruleOr.getRight(), scope );
+            }
+        }
+        else
+        {
+            throw new RuntimeException("Unknown rule to satisfy type " + ruleToSatisfy);
         }
     }
 }
