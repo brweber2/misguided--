@@ -43,4 +43,28 @@ public class RuleSearchTest {
         Assert.assertTrue(unificationResult.getScope().has(new Variable("Z")));
         Assert.assertEquals(unificationResult.getScope().get(new Variable("Z")), new Atom("gary") );
     }
+
+    @Test
+    public void simpleKnowledgeBase2()
+    {
+        KnowledgeBase knowledgeBase = new KnowledgeBase();
+        knowledgeBase.add(new ComplexTerm("hello", new Atom("dave")));
+        knowledgeBase.add(new ComplexTerm("hello", new Atom("gary")));
+        knowledgeBase.add(new ComplexTerm("bye", new Atom("gary")));
+
+        // what(Z) :- hello(Z), bye(Z).
+        knowledgeBase.add(new RuleImpl(new ComplexTerm("what", new Variable("Z")), new RuleAnd(new ComplexTerm("hello", new Variable("Z")), new ComplexTerm("bye", new Variable("Z")))));
+
+        Unify unifier = new Unifier();
+        ProofSearch proofSearch = new ProofSearch(unifier,knowledgeBase);
+        // ?- what(Z).
+        QuestionResult questionResult = proofSearch.ask( new ComplexTerm("what", new Variable("M") ) );
+
+        Assert.assertTrue( questionResult.successful() );
+        List<UnificationResult> unificationResults = questionResult.getResults();
+        Assert.assertEquals(unificationResults.size(), 1);
+        UnificationResult unificationResult = unificationResults.get(0);
+        Assert.assertTrue(unificationResult.getScope().has(new Variable("M")));
+        Assert.assertEquals(unificationResult.getScope().get(new Variable("M")), new Atom("gary") );
+    }
 }

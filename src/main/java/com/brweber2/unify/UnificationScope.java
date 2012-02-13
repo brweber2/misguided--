@@ -1,5 +1,7 @@
 package com.brweber2.unify;
 
+import com.brweber2.term.Atom;
+import com.brweber2.term.ComplexTerm;
 import com.brweber2.term.Term;
 import com.brweber2.term.Variable;
 
@@ -55,7 +57,7 @@ public class UnificationScope {
         }
         if ( parent != null )
         {
-            return parent.has( variable );
+            return parent.has(variable);
         }
         return false;
     }

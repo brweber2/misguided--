@@ -2,17 +2,21 @@ package com.brweber2.search;
 
 import com.brweber2.kb.KnowledgeBase;
 import com.brweber2.kb.KnowledgeBaseEntry;
+import com.brweber2.term.ComplexTerm;
 import com.brweber2.term.Rule;
 import com.brweber2.term.RuleAnd;
 import com.brweber2.term.RuleBody;
 import com.brweber2.term.RuleOr;
 import com.brweber2.term.Term;
+import com.brweber2.term.Variable;
 import com.brweber2.unify.QuestionResult;
 import com.brweber2.unify.UnificationResult;
 import com.brweber2.unify.UnificationScope;
 import com.brweber2.unify.Unify;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.logging.Logger;
 
 /**
@@ -53,14 +57,17 @@ public class ProofSearch {
             {
                 // if the head unifies
                 Rule rule = (Rule) knowledgeBaseEntry;
-                UnificationScope headScope = new UnificationScope(scope);
+                UnificationScope headScope = new UnificationScope();
                 UnificationResult headResult = unifier.unify(headScope, question, rule.getHead());
                 if ( !headResult.unifies() )
                 {
                     continue;
                 }
                 // check if the body unifies
-                QuestionResult bodyResults = satisfies( rule.getBody(), headScope );
+                RuleBody ruleBody = rewriteRuleBody( rule.getBody(), headScope );
+                System.out.println("Re-wrote " + rule.getBody() + " to " + ruleBody +  "!!!!!!!!!!");
+                UnificationScope bodyScope = new UnificationScope();
+                QuestionResult bodyResults = satisfies(ruleBody, bodyScope);
                 if ( bodyResults.successful() )
                 {
                     for (UnificationResult bodyResult : bodyResults.getResults()) {
@@ -69,6 +76,42 @@ public class ProofSearch {
                 }
             }
         }
+    }
+
+    private RuleBody rewriteRuleBody(RuleBody body, UnificationScope headScope) {
+        if ( body instanceof Variable)
+        {
+            Variable bodyVar = (Variable) body;
+            Term t = headScope.get(bodyVar);
+            if ( t != null )
+            {
+                return t;
+            }
+        }
+        else if ( body instanceof ComplexTerm )
+        {
+            ComplexTerm ct = (ComplexTerm) body;
+            List<Term> terms = new ArrayList<Term>();
+            for (Term term : ct.getTerms()) {
+                terms.add( (Term) rewriteRuleBody(term, headScope) );
+            }
+            return new ComplexTerm(ct.getFunctor(), terms.toArray(new Term[terms.size()]) );
+        }
+        else if ( body instanceof  RuleAnd )
+        {
+            RuleAnd ruleAnd = (RuleAnd) body;
+            RuleBody left = rewriteRuleBody(ruleAnd.getLeft(),headScope);
+            RuleBody right = rewriteRuleBody(ruleAnd.getRight(),headScope);
+            return new RuleAnd( left, right );
+        }
+        else if ( body instanceof RuleOr )
+        {
+            RuleOr ruleOr = (RuleOr) body;
+            RuleBody left = rewriteRuleBody(ruleOr.getLeft(),headScope);
+            RuleBody right = rewriteRuleBody(ruleOr.getRight(),headScope);
+            return new RuleOr( left, right );
+        }
+        return body;
     }
 
     private QuestionResult satisfies( RuleBody ruleToSatisfy, UnificationScope scope )
